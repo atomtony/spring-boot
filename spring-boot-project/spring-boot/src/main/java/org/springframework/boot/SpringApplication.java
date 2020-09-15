@@ -257,8 +257,18 @@ public class SpringApplication {
 		Assert.notNull(primarySources, "PrimarySources must not be null");
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
+		// 1. 加载各个jar META-INF/spring.factories
+		// 2. 根据key=org.springframework.context.ApplicationContextInitializer 获取配置的实现类集合
+		// 3. 创建获取到实现类的实例，并以实例集合返回
+		// 4. 注入属性 initializers
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
+
+		// 1. 加载各个jar META-INF/spring.factories，如果已经加载，可以直接get
+		// 2. 根据key=org.springframework.context.ApplicationListener 获取配置的实现类集合
+		// 3. 创建获取到实现类的实例，并以实例集合返回
+		// 4. 注入属性 listeners
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
+		// 被 @SpringBootApplication 注解的类
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
@@ -289,18 +299,27 @@ public class SpringApplication {
 		ConfigurableApplicationContext context = null;
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
 		configureHeadlessProperty();
+		// 1. 加载各个jar META-INF/spring.factories，如果已经加载，可以直接get
+		// 2. 根据key=org.springframework.boot.SpringApplicationRunListener 获取配置的实现类集合
+		// 3. 创建获取到实现类的实例，并以实例集合返回
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
 		try {
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+			// 初始化环境变量
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
 			configureIgnoreBeanInfo(environment);
 			Banner printedBanner = printBanner(environment);
+			// 创建应用上下文
 			context = createApplicationContext();
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class[] { ConfigurableApplicationContext.class }, context);
+
+			// 准备上下文
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
+			// 属性上下文
 			refreshContext(context);
+			// 空方法，等待子类覆盖
 			afterRefresh(context, applicationArguments);
 			stopWatch.stop();
 			if (this.logStartupInfo) {
@@ -329,6 +348,7 @@ public class SpringApplication {
 		// Create and configure the environment
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
+		// 此处会通过 ConfigFileApplicationListener.java 加载 application.properties 属性文件
 		listeners.environmentPrepared(environment);
 		bindToSpringApplication(environment);
 		if (!this.isCustomEnvironment) {
@@ -352,8 +372,11 @@ public class SpringApplication {
 
 	private void prepareContext(ConfigurableApplicationContext context, ConfigurableEnvironment environment,
 			SpringApplicationRunListeners listeners, ApplicationArguments applicationArguments, Banner printedBanner) {
+		// 设置环境变量
 		context.setEnvironment(environment);
+		// 注册beanName生成器
 		postProcessApplicationContext(context);
+		// 调用 ApplicationContextInitializer 初始化方法 initialize
 		applyInitializers(context);
 		listeners.contextPrepared(context);
 		if (this.logStartupInfo) {
@@ -370,6 +393,7 @@ public class SpringApplication {
 		// Load the sources
 		Set<Object> sources = getAllSources();
 		Assert.notEmpty(sources, "Sources must not be empty");
+		// 注册配置类
 		load(context, sources.toArray(new Object[0]));
 		listeners.contextLoaded(context);
 	}

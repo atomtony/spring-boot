@@ -62,6 +62,7 @@ class OnClassCondition extends SpringBootCondition
 		ConditionOutcome[] outcomes = getOutcomes(autoConfigurationClasses, autoConfigurationMetadata);
 		boolean[] match = new boolean[outcomes.length];
 		for (int i = 0; i < outcomes.length; i++) {
+			// 结果不为null，匹配false，结果为null匹配true
 			match[i] = (outcomes[i] == null || outcomes[i].isMatch());
 			if (!match[i] && outcomes[i] != null) {
 				logOutcome(autoConfigurationClasses[i], outcomes[i]);
@@ -86,12 +87,17 @@ class OnClassCondition extends SpringBootCondition
 		// additional thread seems to offer the best performance. More threads make
 		// things worse
 		int split = autoConfigurationClasses.length / 2;
+		// 前一半结果解析器
 		OutcomesResolver firstHalfResolver = createOutcomesResolver(autoConfigurationClasses, 0, split,
 				autoConfigurationMetadata);
+		// 后一半结果解析
 		OutcomesResolver secondHalfResolver = new StandardOutcomesResolver(autoConfigurationClasses, split,
 				autoConfigurationClasses.length, autoConfigurationMetadata, this.beanClassLoader);
+		// 后一半的解析条件结果
 		ConditionOutcome[] secondHalf = secondHalfResolver.resolveOutcomes();
+		// 前一半的解析条件结果
 		ConditionOutcome[] firstHalf = firstHalfResolver.resolveOutcomes();
+		// 合并后的条件结果
 		ConditionOutcome[] outcomes = new ConditionOutcome[autoConfigurationClasses.length];
 		System.arraycopy(firstHalf, 0, outcomes, 0, firstHalf.length);
 		System.arraycopy(secondHalf, 0, outcomes, split, secondHalf.length);
@@ -184,6 +190,8 @@ class OnClassCondition extends SpringBootCondition
 
 			@Override
 			public boolean matches(String className, ClassLoader classLoader) {
+				// 类加载器classLoader是否能加载能成，如果加载成功返回true，不能返回false
+				// 加载成功：匹配成功，加载失败：匹配失败
 				return isPresent(className, classLoader);
 			}
 
@@ -283,8 +291,10 @@ class OnClassCondition extends SpringBootCondition
 			ConditionOutcome[] outcomes = new ConditionOutcome[end - start];
 			for (int i = start; i < end; i++) {
 				String autoConfigurationClass = autoConfigurationClasses[i];
+				// 在 properties 中查找 key为"${autoConfigurationClass}.ConditionalOnClass"的value，是一个类集合
 				Set<String> candidates = autoConfigurationMetadata.getSet(autoConfigurationClass, "ConditionalOnClass");
 				if (candidates != null) {
+					// 获取条件结果
 					outcomes[i - start] = getOutcome(candidates);
 				}
 			}
@@ -293,8 +303,10 @@ class OnClassCondition extends SpringBootCondition
 
 		private ConditionOutcome getOutcome(Set<String> candidates) {
 			try {
+				// 根据 MatchType.MISSING实例匹配 ，匹配candidates中不能被类加载器加载的类，并封装到集合返回
 				List<String> missing = getMatches(candidates, MatchType.MISSING, this.beanClassLoader);
 				if (!missing.isEmpty()) {
+					//
 					return ConditionOutcome.noMatch(ConditionMessage.forCondition(ConditionalOnClass.class)
 							.didNotFind("required class", "required classes").items(Style.QUOTE, missing));
 				}

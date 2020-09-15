@@ -88,14 +88,18 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		if (!isEnabled(annotationMetadata)) {
 			return NO_IMPORTS;
 		}
+		// 将spring-autoconfigure-metadata.properties键值配置加载到PropertiesAutoConfigurationMetadata对象中并返回
 		AutoConfigurationMetadata autoConfigurationMetadata = AutoConfigurationMetadataLoader
 				.loadMetadata(this.beanClassLoader);
+		// 根据注解元数据获取注解属性
 		AnnotationAttributes attributes = getAttributes(annotationMetadata);
+		// 获取 spring.factories 中key=org.springframework.boot.autoconfigure.EnableAutoConfiguration的value值
 		List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
 		configurations = removeDuplicates(configurations);
 		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
 		checkExcludedClasses(configurations, exclusions);
 		configurations.removeAll(exclusions);
+		// 过滤一些为生效的自动配置
 		configurations = filter(configurations, autoConfigurationMetadata);
 		fireAutoConfigurationImportEvents(configurations, exclusions);
 		return StringUtils.toStringArray(configurations);
@@ -224,6 +228,7 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 			boolean[] match = filter.match(candidates, autoConfigurationMetadata);
 			for (int i = 0; i < match.length; i++) {
 				if (!match[i]) {
+					// 对未匹配打标记为跳过
 					skip[i] = true;
 					skipped = true;
 				}
@@ -234,6 +239,7 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		}
 		List<String> result = new ArrayList<>(candidates.length);
 		for (int i = 0; i < candidates.length; i++) {
+			// 对跳过标记为false的添加到结果集中
 			if (!skip[i]) {
 				result.add(candidates[i]);
 			}
